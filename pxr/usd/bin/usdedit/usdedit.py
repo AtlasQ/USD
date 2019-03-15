@@ -88,6 +88,9 @@ def _generateTemporaryFile(usdcatCmd, usdFileName, readOnly, prefix):
     import tempfile
     (usdaFile, usdaFileName) = tempfile.mkstemp(
         prefix=fullPrefix, suffix='.usda', dir=os.getcwd())
+
+    # No need for an open file descriptor, as it locks the file in Windows.
+    os.close(usdaFile)
  
     os.system(usdcatCmd + ' ' + usdFileName + '> ' + usdaFileName)
 
@@ -99,7 +102,7 @@ def _generateTemporaryFile(usdcatCmd, usdFileName, readOnly, prefix):
     if os.stat(usdaFileName).st_size == 0:
         sys.exit("Error: Failed to open file %s, exiting." % usdFileName)
 
-    return usdaFile, usdaFileName
+    return usdaFileName
 
 # allow the user to edit the temporary file, and return whether or
 # not they made any changes.
@@ -203,8 +206,8 @@ def main():
     usdcatCmd, editorCmd = _findEditorTools(usdFileName, readOnly)
     
     # generate our temporary file with proper permissions and edit.
-    usdaFile, usdaFileName = _generateTemporaryFile(usdcatCmd, usdFileName,
-                                                    readOnly, prefix)
+    usdaFileName = _generateTemporaryFile(usdcatCmd, usdFileName,
+                                          readOnly, prefix)
     tempFileChanged = _editTemporaryFile(editorCmd, usdaFileName)
     
 
@@ -217,7 +220,8 @@ def main():
                      ". Your edits can be found in %s. " \
                      %(usdFileName, usdaFileName))
 
-    os.close(usdaFile)
+    if readOnly:
+        os.chmod(usdaFileName, 0644)
     os.remove(usdaFileName)
 
 if __name__ == "__main__":
